@@ -1,32 +1,30 @@
 from fastapi import FastAPI, Request
-import telegram
-import os
+import requests
 
 app = FastAPI()
 
-BOT_TOKEN = os.getenv("BOT_TOKEN") or "YOUR_TELEGRAM_BOT_TOKEN"
-TELEGRAM_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
-bot = telegram.Bot(token=BOT_TOKEN)
+BOT_TOKEN = "8047919145:AAH0LvACJLKD1BzdJOs52KsC2WGoYFcNQfo"
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
-@app.get("/")
-def root():
-    return {"message": "Telegram bot running"}
+@app.post(f"/webhook/{BOT_TOKEN}")
+async def telegram_webhook(req: Request):
+    body = await req.json()
 
-@app.post("/webhook/{token}")
-async def telegram_webhook(request: Request, token: str):
-    if token != BOT_TOKEN:
-        return {"error": "Invalid token"}
+    if "message" in body:
+        chat_id = body["message"]["chat"]["id"]
+        text = body["message"].get("text", "")
 
-    data = await request.json()
-    if "message" in data:
-        chat_id = data["message"]["chat"]["id"]
-        text = data["message"].get("text", "")
-
-        if text.strip() == "/run":
-            bot.send_message(chat_id=chat_id, text="📈 전략 실행 시작!")
-            # 여기에 전략 실행 코드 삽입 가능
+        if text == "/start":
+            send_message(chat_id, "✅ 봇이 정상적으로 연결되었습니다!")
+        elif text == "/signal":
+            send_message(chat_id, "📡 신호 요청을 수신했습니다. (여기에 로직 연결 예정)")
         else:
-            bot.send_message(chat_id=chat_id, text="🤖 명령어를 인식하지 못했습니다.")
+            send_message(chat_id, "🤖 지원되지 않는 명령어입니다.")
 
-    return {"status": "ok"}
+    return {"ok": True}
 
+
+def send_message(chat_id, text):
+    url = f"{TELEGRAM_API_URL}/sendMessage"
+    data = {"chat_id": chat_id, "text": text}
+    requests.post(url, data=data)
